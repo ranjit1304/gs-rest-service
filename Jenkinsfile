@@ -14,29 +14,27 @@ pipeline {
         VERSION = '1.0.001'
     }
 
-    stages {
-
-        stage('Build & Test') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args  '-v maven-repo:/root/.m2'
-                }
-            }
-            steps {
-                dir(APP_DIR) {
-                    sh 'mvn -B -ntp clean verify'
-                }
-            }
-            post {
-                always {
-                    junit "${APP_DIR}/target/surefire-reports/*.xml"
-                }
-                success {
-                    stash name: 'jar', includes: "${APP_DIR}/target/*.jar"
-                }
-            }
+    stage('Build & Test') {
+    agent any
+    steps {
+        sh '''
+            docker run --rm \
+              -v "$WORKSPACE":/workspace \
+              -v maven-repo:/root/.m2 \
+              -w /workspace/${APP_DIR} \
+              maven:3.9-eclipse-temurin-17 \
+              mvn -B -ntp clean verify
+        '''
+    }
+    post {
+        always {
+            junit "${APP_DIR}/target/surefire-reports/*.xml"
         }
+        success {
+            stash name: 'jar', includes: "${APP_DIR}/target/*.jar"
+        }
+    }
+}
 
         stage('Docker Image') {
             agent any
