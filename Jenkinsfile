@@ -14,21 +14,20 @@ pipeline {
         VERSION = '1.0.001'
     }
 
-    stages {
-
-        stage('Build & Test') {
-            agent { label 'Slave1' }
-            steps {
-                // Practice setup only: opens the Docker socket for the agent user
-                sh 'sudo -n chmod 666 /var/run/docker.sock'
-                sh '''
-                    docker run --rm \
-                      -v "$WORKSPACE":/workspace \
-                      -v maven-repo:/root/.m2 \
-                      -w /workspace/${APP_DIR} \
-                      maven:3.9-eclipse-temurin-17 \
-                      mvn -B -ntp clean verify
-                '''
+    steps {
+    // Practice setup only: opens the Docker socket for the agent user
+    sh 'sudo -n chmod 666 /var/run/docker.sock'
+    sh '''
+        mkdir -p "$HOME/.m2-docker"
+        docker run --rm \
+          -u "$(id -u):$(id -g)" \
+          -e MAVEN_CONFIG=/var/maven/.m2 \
+          -v "$HOME/.m2-docker":/var/maven/.m2 \
+          -v "$WORKSPACE":/workspace \
+          -w /workspace/${APP_DIR} \
+          maven:3.9-eclipse-temurin-17 \
+          mvn -B -ntp -Duser.home=/var/maven clean verify
+    '''
             }
             post {
                 always {
