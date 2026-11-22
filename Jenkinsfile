@@ -63,4 +63,46 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
                     docker network inspect jenkins-practice_default >/dev/null 2>&1 || docker network create jenkins-practice_default
 
                     docker rm -f smoke-test || true
-                    docker
+                    docker run -d --name smoke-test --network jenkins-practice_default ${IMAGE}:${VERSION}
+
+                    for i in $(seq 1 30); do
+                        code=$(docker run --rm --network jenkins-practice_default curlimages/curl \
+                               -s -o /dev/null -w '%{http_code}' http://smoke-test:8080/greeting || true)
+                        if [ "$code" = "200" ]; then
+                            echo "App is up (attempt $i)"
+                            exit 0
+                        fi
+                        echo "Attempt $i: got '$code', retrying..."
+                        sleep 2
+                    done
+
+                    echo "App never answered with HTTP 200"
+                    exit 1
+                '''
+            }
+            post {
+                always {
+                    sh 'docker rm -f smoke-test || true'
+                }
+            }
+        }
+
+        stage('Release') {
+            agent { label 'Slave1' }
+            steps {
+                input message: "Release ${IMAGE}:${VERSION}?", ok: 'Release'
+                sh '''
+                    docker tag ${IMAGE}:${VERSION} ${IMAGE}:release-${VERSION}
+                    docker save -o ${IMAGE}-release-${VERSION}.tar ${IMAGE}:release-${VERSION}
+                '''
+                archiveArtifacts artifacts: '*.tar', fingerprint: true
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Build failed - in a real setup: mail to: "ranjit.konam@gmail.com", subject: "FAILED: ${env.JOB_NAME}", body: "${env.BUILD_URL}"'
+        }
+    }
+}
