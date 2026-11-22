@@ -19,7 +19,7 @@ pipeline {
         stage('Build & Test') {
             agent { label 'Slave1' }
             steps {
-                // Practice setup only: opens the Docker socket for the agent user
+                // Practice setup only: remove after adding the agent user to the docker group
                 sh 'sudo -n chmod 666 /var/run/docker.sock'
                 sh '''
                     mkdir -p "$HOME/.m2-docker"
@@ -49,7 +49,7 @@ pipeline {
                 unstash 'jar'
                 sh 'cp ${APP_DIR}/target/*.jar app.jar'
                 writeFile file: 'Dockerfile', text: '''FROM eclipse-temurin:17-jre
-RUN useradd -r -u 1001 appuser
+RUN useradd -m -u 1001 appuser
 USER appuser
 COPY app.jar /app/app.jar
 EXPOSE 8080
@@ -105,7 +105,7 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 
     post {
         failure {
-            echo 'Build failed - in a real setup: mail to: "ranjit.konam@gmail.com", subject: "FAILED: ${env.JOB_NAME}", body: "${env.BUILD_URL}"'
+            echo "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${env.BUILD_URL} (in a real setup, send this via mail/Slack)"
         }
     }
 }
