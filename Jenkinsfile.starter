@@ -1,0 +1,77 @@
+// PRACTICE PIPELINE - fill in every TODO, then compare with Jenkinsfile.solution
+// Target app: https://github.com/spring-guides/gs-rest-service  (folder: complete)
+
+pipeline {
+    agent none
+
+    options {
+        // TODO 1: add timestamps, a 30 minute timeout, keep only the last 10 builds,
+        //         and forbid concurrent builds
+    }
+
+    environment {
+        APP_DIR = 'complete'
+        IMAGE   = 'practice-app'
+        // TODO 2: define VERSION as 1.0.<build number>
+    }
+
+    stages {
+
+        stage('Build & Test') {
+            // TODO 3: run this stage inside a maven:3.9-eclipse-temurin-17 container
+            //         and cache ~/.m2 in a named volume so builds get faster
+            steps {
+                // TODO 4: run "mvn -B -ntp clean verify" inside APP_DIR
+            }
+            post {
+                always {
+                    // TODO 5: publish the JUnit test reports (surefire-reports)
+                }
+                success {
+                    // TODO 6: stash the built jar so the next stage (on another agent) can use it
+                }
+            }
+        }
+
+        stage('Docker Image') {
+            agent any
+            steps {
+                // TODO 7: unstash the jar, write a Dockerfile that:
+                //         - uses eclipse-temurin:17-jre
+                //         - runs as a NON-root user
+                //         - exposes 8080
+                //         then build the image tagged ${IMAGE}:${VERSION}
+            }
+        }
+
+        stage('Smoke Test') {
+            agent any
+            steps {
+                // TODO 8: start the container on the network jenkins-practice_default,
+                //         poll http://<container>:8080/greeting up to 30 times,
+                //         fail the build if it never answers with HTTP 200
+            }
+            post {
+                always {
+                    // TODO 9: always remove the smoke-test container
+                }
+            }
+        }
+
+        stage('Release') {
+            agent any
+            steps {
+                // TODO 10: ask for manual approval (input), then
+                //          tag the image as ${IMAGE}:release-${VERSION},
+                //          "docker save" it to a .tar and archive it with a fingerprint
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'TODO 11: replace with a real notification (mail/Slack) in a real setup'
+        }
+    }
+}
+
